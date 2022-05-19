@@ -1,0 +1,9 @@
+[recipe=iron-ore-processing] := 4 [item=iron-ore] + 2 s -> 2 [item=processed-iron];
+[recipe=angelsore-crushed-mix1-processing] := 1 [item=catalysator-brown] + 2 [item=angels-ore1-crushed] + 2 [item=angels-ore2-crushed] + 1 s -> 4 [item=iron-ore];
+[recipe=catalysator-brown] := 25 [fluid=mineral-sludge] + 0.5 s -> 2 [item=catalysator-brown];
+[recipe=angelsore1-crushed] := 2 [item=angels-ore1] + 1 s -> 2 [item=angels-ore1-crushed] + 1 [item=stone-crushed];
+[recipe=angelsore2-crushed] := 2 [item=angels-ore2] + 1 s -> 2 [item=angels-ore2-crushed] + 1 [item=stone-crushed];
+[recipe=slag-processing-1] := 25 [fluid=mineral-sludge] + 4 s -> 1 [item=angels-ore1];
+[recipe=slag-processing-2] := 25 [fluid=mineral-sludge] + 4 s -> 1 [item=angels-ore2];
+[recipe=crystal-slurry-filtering-conversion-1] := 1 [item=filter-charcoal] + 50 [fluid=crystal-slurry] + 100 [fluid=water-mineralized] + 3 s -> 1 [item=filter-frame] + 50 [fluid=mineral-sludge] + 40 [fluid=water-yellow-waste];
+[recipe=water-mineralized] := 100 [fluid=water] + 10 [item=stone-crushed] + 1 s -> 100 [fluid=water-mineralized]

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#Cmpl 2.0
+#March 2021
+#Mike Steglich
+
+oldPath=$PATH 
+PATH="$CMPLHOME":$PATH
+
+export PATH
+export PYTHONPATH="$CMPLHOME"/pyCmpl/lib3:$PYTHONPATH
+export PYTHONBIN="$CMPLHOME"/Thirdparty/pypy3.7-v7.3.5-linux64/bin/pypy3
+	
+outAlias="cmpl__${RANDOM}__"
+
+if [ $# -eq 0 ]; then 
+	"$CMPLHOME"/bin/cmpl
+else 
+	"$CMPLHOME"/bin/cmpl "$@" -o-opt "${outAlias}.optcmpl" -o-pre "${outAlias}.precmpl" -o-extern "${outAlias}.extdata" -config ./modules.opt -modules precomp -no-warn-unused 
+	if test -f "${outAlias}.optcmpl"; then
+		CMPLHOME="$CMPLHOME/" $PYTHONBIN "$CMPLHOME"/bin/cmplStarter.py $outAlias
+	fi
+fi
+
+PATH=$oldPath 
+export PATH

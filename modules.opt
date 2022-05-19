@@ -1,0 +1,31 @@
+#***************************************************
+# configuration file for module aggregations
+#***************************************************
+
+woPreComp			run cmpl with default modules
+	compatSymbols
+	mathFunctions
+	inputFunctions
+	classFunctions
+    solverSelect
+	boundRow
+	linearSos -warn-invalid-sos
+	linearVarProd
+	linearConstantRow
+	linearLogCon
+	compile -no-warn-insert-eos -compat-linenamepref -compat-cbsymbols -compat-cbh-assign
+    interpret
+    writeMps
+    writeMatrix
+    solverCbc
+    solverGlpk
+    solverCplex
+    solverGurobi
+    solverScip
+    solutionReportAscii -solStdOut
+    solutionReportCsv
+
+# runs only the precompiler and outputs the generated file
+precomp			runs only the precompiler and outputs the generated file
+	compatSymbols
+	precompile 
