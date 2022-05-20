@@ -6,4 +6,6 @@
 [recipe=slag-processing-1] := 25 [fluid=mineral-sludge] + 4 s -> 1 [item=angels-ore1];
 [recipe=slag-processing-2] := 25 [fluid=mineral-sludge] + 4 s -> 1 [item=angels-ore2];
 [recipe=crystal-slurry-filtering-conversion-1] := 1 [item=filter-charcoal] + 50 [fluid=crystal-slurry] + 100 [fluid=water-mineralized] + 3 s -> 1 [item=filter-frame] + 50 [fluid=mineral-sludge] + 40 [fluid=water-yellow-waste];
-[recipe=water-mineralized] := 100 [fluid=water] + 10 [item=stone-crushed] + 1 s -> 100 [fluid=water-mineralized]
+[recipe=water-mineralized] := 100 [fluid=water] + 10 [item=stone-crushed] + 1 s -> 100 [fluid=water-mineralized];
+
+[item=processed-iron] := 8

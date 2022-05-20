@@ -1,0 +1,24 @@
+[recipe=advanced-circuit] := 2 [item=plastic-bar] + 4 [item=copper-cable] + 2 [item=electronic-circuit] + 6 s -> 1 [item=advanced-circuit];
+[recipe=battery] := 1 [item=iron-plate] + 1 [item=copper-plate] + 20 [fluid=sulfuric-acid] + 4 s -> 1 [item=battery];
+[recipe=copper-cable] := 1 [item=copper-plate] + 0.5 s -> 2 [item=copper-cable];
+[recipe=copper-plate] := 1 [item=copper-ore] + 3.2 s -> 1 [item=copper-plate];
+[recipe=electric-engine-unit] := 2 [item=electronic-circuit] + 1 [item=engine-unit] + 15 [fluid=lubricant] + 10 s -> 1 [item=electric-engine-unit];
+[recipe=electronic-circuit] := 1 [item=iron-plate] + 3 [item=copper-cable] + 0.5 s -> 1 [item=electronic-circuit];
+[recipe=engine-unit] := 1 [item=steel-plate] + 1 [item=iron-gear-wheel] + 2 [item=pipe] + 10 s -> 1 [item=engine-unit];
+[recipe=flying-robot-frame] := 1 [item=steel-plate] + 2 [item=battery] + 3 [item=electronic-circuit] + 1 [item=electric-engine-unit] + 20 s -> 1 [item=flying-robot-frame];
+[recipe=iron-gear-wheel] := 2 [item=iron-plate] + 0.5 s -> 1 [item=iron-gear-wheel];
+[recipe=iron-plate] := 1 [item=iron-ore] + 3.2 s -> 1 [item=iron-plate];
+[recipe=low-density-structure] := 20 [item=copper-plate] + 2 [item=steel-plate] + 5 [item=plastic-bar] + 20 s -> 1 [item=low-density-structure];
+[recipe=lubricant] := 10 [fluid=heavy-oil] + 1 s -> 10 [fluid=lubricant];
+[recipe=pipe] := 1 [item=iron-plate] + 0.5 s -> 1 [item=pipe];
+[recipe=plastic-bar] := 1 [item=coal] + 20 [fluid=petroleum-gas] + 1 s -> 2 [item=plastic-bar];
+[recipe=processing-unit] := 20 [item=electronic-circuit] + 2 [item=advanced-circuit] + 5 [fluid=sulfuric-acid] + 10 s -> 1 [item=processing-unit];
+[recipe=steel-plate] := 5 [item=iron-plate] + 16 s -> 1 [item=steel-plate];
+[recipe=sulfur] := 30 [fluid=water] + 30 [fluid=petroleum-gas] + 1 s -> 2 [item=sulfur];
+[recipe=sulfuric-acid] := 1 [item=iron-plate] + 5 [item=sulfur] + 100 [fluid=water] + 1 s -> 50 [fluid=sulfuric-acid];
+[recipe=utility-science-pack] := 2 [item=processing-unit] + 1 [item=flying-robot-frame] + 3 [item=low-density-structure] + 21 s -> 3 [item=utility-science-pack];
+[recipe=advanced-oil-processing] := 50 [fluid=water] + 100 [fluid=crude-oil] + 5 s -> 25 [fluid=heavy-oil] + 45 [fluid=light-oil] + 55 [fluid=petroleum-gas];
+[recipe=heavy-oil-cracking] := 30 [fluid=water] + 40 [fluid=heavy-oil] + 2 s -> 30 [fluid=light-oil];
+[recipe=light-oil-cracking] := 30 [fluid=water] + 30 [fluid=light-oil] + 2 s -> 20 [fluid=petroleum-gas];
+
+[item=utility-science-pack] := 15

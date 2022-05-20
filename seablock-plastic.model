@@ -5,4 +5,6 @@
 [recipe=water-gas-shift-1] := 50 [fluid=gas-carbon-monoxide] + 50 [fluid=steam] + 2 s -> 50 [fluid=gas-carbon-dioxide] + 50 [fluid=gas-hydrogen];
 [recipe=carbon-separation-1] := 1 [item=carbon] + 50 [fluid=water-purified] + 2 s -> 50 [fluid=gas-carbon-monoxide];
 [recipe=steam-cracking-gas-residual] := 100 [fluid=gas-residual] + 100 [fluid=steam] + 4 s -> 150 [fluid=gas-synthesis];
-[recipe=gas-synthesis-reforming] := 60 [fluid=gas-carbon-monoxide] + 90 [fluid=gas-hydrogen] + 2 s -> 100 [fluid=gas-synthesis]
+[recipe=gas-synthesis-reforming] := 60 [fluid=gas-carbon-monoxide] + 90 [fluid=gas-hydrogen] + 2 s -> 100 [fluid=gas-synthesis];
+
+[item=plastic-bar] := 8

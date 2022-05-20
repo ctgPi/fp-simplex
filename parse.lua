@@ -90,57 +90,69 @@ end
 local recipe_data = io.read("*a")
 local recipes = {}
 local items = {}
+local item_rate_constraints = {}
 for declaration in split(recipe_data, ";") do
-    local recipe, raw_ingredients = split_exactly(declaration, ":=", 2)
-    recipe = trim(recipe)
-    
-    local raw_consumes, raw_produces = split_exactly(raw_ingredients, "->", 2)
-    raw_consumes = trim(raw_consumes)
-    raw_produces = trim(raw_produces)
+    local lvalue, rvalue = split_exactly(declaration, ":=", 2)
+    lvalue = trim(lvalue)
+    if lvalue:find("[recipe=", 1, true) == 1 then
+        local recipe = lvalue
+        local raw_ingredients = rvalue
+        
+        local raw_consumes, raw_produces = split_exactly(raw_ingredients, "->", 2)
+        raw_consumes = trim(raw_consumes)
+        raw_produces = trim(raw_produces)
 
-    local consumes = {}
-    local crafting_time = nil
-    for raw_item in split(raw_consumes, "+") do
-        raw_item = trim(raw_item)
+        local consumes = {}
+        local crafting_time = nil
+        for raw_item in split(raw_consumes, "+") do
+            raw_item = trim(raw_item)
 
-        count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
-        count = tonumber(count)
+            count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
+            count = tonumber(count)
 
-        if item == "s" then
-            crafting_time = count
-        else
-            consumes[item] = count
+            if item == "s" then
+                crafting_time = count
+            else
+                consumes[item] = count
+                items[item] = true
+            end
+        end
+
+        if crafting_time == nil then
+            error("Missing crafting time")
+        end
+
+        local produces = {}
+        for raw_item in split(raw_produces, "+") do
+            raw_item = trim(raw_item)
+
+            count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
+            count = tonumber(count)
+
+            produces[item] = count
             items[item] = true
         end
+
+        -- FIXME: catalysts, etc.
+        -- FIXME: adjust for speed/productivity
+        -- FIXME: adjust for crafting speed
+        local ingredients = {}
+        for item, count in pairs(produces) do
+            ingredients[item] = count / crafting_time
+        end
+        for item, count in pairs(consumes) do
+            ingredients[item] = -count / crafting_time
+        end
+
+        recipes[recipe] = ingredients
+    elseif lvalue:find("[item=", 1, true) == 1 or lvalue:find("[fluid=", 1, true) == 1 then
+        local item = lvalue
+        local count = tonumber(rvalue)
+
+        item_rate_constraints[item] = count
+    else
+        error("invalid lvalue: " .. lvalue)
     end
-
-    if crafting_time == nil then
-        error("Missing crafting time")
-    end
-
-    local produces = {}
-    for raw_item in split(raw_produces, "+") do
-        raw_item = trim(raw_item)
-
-        count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
-        count = tonumber(count)
-
-        produces[item] = count
-        items[item] = true
-    end
-
-    -- FIXME: catalysts, etc.
-    -- FIXME: adjust for speed/productivity
-    -- FIXME: adjust for crafting speed
-    local ingredients = {}
-    for item, count in pairs(produces) do
-        ingredients[item] = count / crafting_time
-    end
-    for item, count in pairs(consumes) do
-        ingredients[item] = -count / crafting_time
-    end
-
-    recipes[recipe] = ingredients
 end
 
 local is_strictly_input = {}
@@ -160,14 +172,11 @@ for item, _ in pairs(items) do
     end
 end
 
-local item_rate_constraints = {}
 for item, _ in pairs(items) do
     if not is_strictly_input[item] and not is_strictly_output[item] then
         item_rate_constraints[item] = 0
     end
 end
--- item_rate_constraints["[item=processed-iron]"] = 2  -- FIXME
-item_rate_constraints["[item=plastic-bar]"] = 2  -- FIXME
 
 local num_recipes = 0
 for _, _ in pairs(recipes) do
@@ -298,13 +307,13 @@ if num_item_rate_constraints > num_recipes then
                 --model_file:write("    + item_production_cost^T * item_production_rate\n")
                 --model_file:write("    + item_consumption_cost^T * item_consumption_rate\n")
                 --model_file:write("    + machine_cost^T * machine_count -> min;\n")
-                model_file:write("    min_recipe_rate -> max;\n"); -- [1]
+                model_file:write("    -min_recipe_rate -> min;\n"); -- [1]
                 model_file:write("\n")
                 model_file:write("con:\n")
                 model_file:write("    item_rate = recipe_ingredients^T * recipe_rate;\n");
                 model_file:write("    item_rate = item_production_rate - item_consumption_rate;\n");
-                model_file:write("    machine_count >= recipe_rate;\n")
-                model_file:write("    recipe_rate >= min_recipe_rate;\n")
+                model_file:write("    machine_count - recipe_rate >= 0;\n")
+                model_file:write("    recipe_rate - min_recipe_rate >= 0;\n")
                 for item, rate in pairs(item_rate_constraints) do
                     if not contains_value(relaxed_items, item) then
                         model_file:write("    item_rate[\"")
@@ -362,18 +371,18 @@ if num_item_rate_constraints > num_recipes then
             goal, variables = solve_model(model_file_name)
             os.remove(model_file_name)
 
-            for k, v in pairs(variables) do
-                io.write(k)
-                io.write(" = ")
-                io.write(tostring(v))
-                io.write("\n")
-            end
+--            for k, v in pairs(variables) do
+--                io.write(k)
+--                io.write(" = ")
+--                io.write(tostring(v))
+--                io.write("\n")
+--            end
 --            io.write("\n")
 --            io.write("#     goal = ")
 --            io.write(tostring(goal))
 --            io.write("\n")
 
-            if goal ~= nil and goal > 0 then
+            if goal ~= nil and goal < 0 then
                 for _, item in pairs(relaxed_items) do
                     print("#     " .. item)
                 end
