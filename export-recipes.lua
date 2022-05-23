@@ -10,7 +10,7 @@ for _, recipe in pairs(game.player.force.recipes) do
                 if not first_ingredient then
                     table.insert(list, " + ")
                 end
-                table.insert(list, tostring(def.amount * (def.probability or 1.0)))
+                table.insert(list, tostring((def.amount or 0.5 * (def.amount_min * def.amount_max)) * (def.probability or 1.0)))
                 table.insert(list, " [")
                 table.insert(list, def.type)
                 table.insert(list, "=")
@@ -28,7 +28,7 @@ for _, recipe in pairs(game.player.force.recipes) do
                 if not first_product then
                     table.insert(list, " + ")
                 end
-                table.insert(list, tostring(def.amount * (def.probability or 1.0)))
+                table.insert(list, tostring((def.amount or 0.5 * (def.amount_min * def.amount_max)) * (def.probability or 1.0)))
                 table.insert(list, " [")
                 table.insert(list, def.type)
                 table.insert(list, "=")

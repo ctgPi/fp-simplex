@@ -1,4 +1,6 @@
-function dump(o)
+#!/usr/bin/env lua5.2
+
+local function dump(o)
     if type(o) == 'table' then
        local s = '{ '
        for k, v in pairs(o) do
@@ -51,19 +53,6 @@ end
 
 --------------------------------------
 
-local objective = {
-    [1] =   3,
-    [2] = -11,
-    [3] =  -2,
-}
-
-local constraints = {
-    {{[1] =  1, [2] = -3,           [4] = 1},  5},
-    {{[1] = -3, [2] = -3,           [5] = 1},  4},
-    {{          [2] = -3, [3] = -2, [6] = 1},  6},
-    {{[1] =  3,           [3] =  5, [7] = 1}, -4},
-}
-
 -- This implements the _parametric self-dual simplex method_ for solving a
 -- linear program; see Robert J. Vanderbei's book "Linear Programming:
 -- Foundations and Extensions" for details.
@@ -76,7 +65,7 @@ local _b = {}
 Simplex = {}
 
 function Simplex:new()
-    o = {
+    local o = {
         N = {
             [1] = {[_b] =   3},
             [2] = {[_b] = -11},
@@ -129,7 +118,7 @@ function Simplex:solve()
         end
 
         if li == nil then
-            ans = {}
+            local ans = {}
             for i, _ in pairs(self.B) do
                 ans[i] = self.B[i][_b]
             end
@@ -218,7 +207,7 @@ function Simplex:solve()
     end
 end
 
-solver = Simplex:new()
-obj, ans = solver:solve()
+local solver = Simplex:new()
+local obj, ans = solver:solve()
 print(obj)
 print(dump(ans))

@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.2
 
-function dump(o)
+local function dump(o)
    if type(o) == 'table' then
       local s = '{ '
       for k,v in pairs(o) do
@@ -13,17 +13,17 @@ function dump(o)
    end
 end
 
-function trim(s)
+local function trim(s)
     return s:match("^%s*(.*)"):match("(.-)%s*$")
 end
 
-function split(s, d)
+local function split(s, d)
     local function next(state, _)
         local p = state.p
         if p == nil then
             return nil
         end
-        q = s:find(d, p, true)
+        local q = s:find(d, p, true)
         if q == nil then
             local fragment = s:sub(p)
             state.p = nil
@@ -37,7 +37,7 @@ function split(s, d)
     return next, {p = 0}, nil
 end
 
-function split_exactly(s, d, n)
+local function split_exactly(s, d, n)
     local fragments = {}
     for fragment in split(s, d) do
         if #fragments == n then
@@ -48,10 +48,10 @@ function split_exactly(s, d, n)
     if #fragments ~= n then
         error("too few fragments: expected " .. tostring(n) .. ", found " .. tostring(#fragments))
     end
-    return unpack(fragments)
+    return table.unpack(fragments)
 end
 
-function combinations(s, k)
+local function combinations(s, k)
     local function next(state, _)
         while state.p > 0 do
             if state.p > k then
@@ -79,7 +79,7 @@ function combinations(s, k)
     return next, {i = {1}, p = 1, r = false}, nil
 end
 
-function contains_value(t, u)
+local function contains_value(t, u)
     for _, v in pairs(t) do
         if u == v then
             return true
@@ -107,7 +107,7 @@ for declaration in split(recipe_data, ";") do
         for raw_item in split(raw_consumes, "+") do
             raw_item = trim(raw_item)
 
-            count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
+            local count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
             count = tonumber(count)
 
             if item == "s" then
@@ -126,7 +126,7 @@ for declaration in split(recipe_data, ";") do
         for raw_item in split(raw_produces, "+") do
             raw_item = trim(raw_item)
 
-            count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
+            local count, item = raw_item:match("^([0-9.]+)%s*(.*)$")
             count = tonumber(count)
 
             produces[item] = count
@@ -203,6 +203,10 @@ if num_item_rate_constraints > num_recipes then
             local model_file_name = os.tmpname()
             do
                 local model_file = io.open(model_file_name, "w+")
+                if model_file == nil then
+                    error("cannot open model file")
+                    return
+                end
                 model_file:write("par:\n")
                 model_file:write("    RECIPE := set(")
                 do
@@ -334,6 +338,10 @@ if num_item_rate_constraints > num_recipes then
                     os.execute("./cmpl " .. model_file_name .. " -solutionCsv " .. solution_file_name .. " >/dev/null")  -- FIXME: escaping
                     do
                         local solution_file = io.open(solution_file_name, "r")
+                        if solution_file == nil then
+                            error("cannot open solution file")
+                            return
+                        end
                         solution_data = solution_file:read("*a")
                         solution_file:close()
                     end
@@ -368,7 +376,7 @@ if num_item_rate_constraints > num_recipes then
                 return goal, variables
             end
 
-            goal, variables = solve_model(model_file_name)
+            local goal, variables = solve_model(model_file_name)
             os.remove(model_file_name)
 
 --            for k, v in pairs(variables) do
