@@ -1,55 +1,5 @@
-#!/usr/bin/env lua5.2
-
-local function dump(o)
-    if type(o) == 'table' then
-       local s = '{ '
-       for k, v in pairs(o) do
-          if type(k) ~= 'number' then k = '"'..tostring(k)..'"' end
-          s = s .. '['..k..'] = ' .. dump(v) .. ','
-       end
-       return s .. '} '
-    else
-       return tostring(o)
-    end
-end
-
-------------------------------
-
-Xoshiro128plus = {}
-
-function Xoshiro128plus:new()
-    local o = {math.random(), math.random(), math.random(), math.random()}
-    setmetatable(o, self)
-    self.__index = self
-    return o
-end
-
-function Xoshiro128plus:next_u32()
-    local result = bit32.bor(0, self[1] + self[4])
-
-    local t = bit32.lshift(self[2], 9)
-    self[3] = bit32.bxor(self[3], self[1])
-    self[4] = bit32.bxor(self[4], self[2])
-    self[2] = bit32.bxor(self[2], self[3])
-    self[1] = bit32.bxor(self[1], self[4])
-    self[3] = bit32.bxor(self[3], t)
-    self[4] = bit32.lrotate(self[4], 11)
-
-    return result
-end
-
--- X ~ U([0, 1])
-function Xoshiro128plus:next_uniform_f()
-    return 1.1641532182693481e-10 * (2 * self:next_u32() + 1)
-end
-
--- X ~ N(0, 1)
--- Y ~ N(0, 1)
-function Xoshiro128plus:next_normal_f()
-    local x = self:next_uniform_f()
-    local y = self:next_uniform_f()
-    return math.sqrt(-2 * math.log(x)) * math.cos(2 * math.pi * y), math.sqrt(-2 * math.log(x)) * math.sin(2 * math.pi * y)
-end
+local AffineExpression = require "affine_expression"
+local Xoshiro128plus = require "xoshiro128plus"
 
 --------------------------------------
 
@@ -59,155 +9,219 @@ end
 
 local INF = 1/0
 
-local _a = {}
-local _b = {}
+local _1 = AffineExpression._1
+local _m = AffineExpression._m
 
-Simplex = {}
+local Simplex = {}
 
-function Simplex:new()
-    local o = {
-        N = {
-            [1] = {[_b] =   3},
-            [2] = {[_b] = -11},
-            [3] = {[_b] =  -2},
-        },
-        B = {
-            [4] = {[_b] =   5, [1] =  1, [2] = -3,         },
-            [5] = {[_b] =   4, [1] = -3, [2] = -3,         },
-            [6] = {[_b] =   6,           [2] = -3, [3] = -2},
-            [7] = {[_b] =  -4, [1] =  3,           [3] =  5},
-        },
-    }
+function Simplex:new(o)
+    local o = o or {}
     setmetatable(o, self)
     self.__index = self
     return o
 end
 
-function Simplex:solve()
-    local rng = Xoshiro128plus:new()
-
-    -- FIXME: move this to :new() or something
-    for i, _ in pairs(self.B) do
-        self.B[i][_a] = math.exp(rng:next_normal_f())
+function Simplex:copy()
+    local copy = Simplex:new()
+    for x, _ in pairs(self) do
+        copy[x] = self[x]:copy()
     end
-    for i, _ in pairs(self.N) do
-        self.N[i][_a] = math.exp(rng:next_normal_f())
+    return copy
+end
+
+function Simplex:add_constraint(constraint)
+    for x, _ in pairs(self) do
+        if x ~= _1 and x ~= _m then
+            constraint = constraint:replace(x, self[x])
+        end
     end
 
-    local obj = 0
-    while true do
-        local lb = 0
-        local li = nil
-        for i, _ in pairs(self.B) do
-            if self.B[i][_a] > 0 then
-                local x = -self.B[i][_b] / self.B[i][_a]
-                if x > lb then
-                    lb = x
-                    li = i
-                end
-            end
-        end
-        for i, _ in pairs(self.N) do
-            if self.N[i][_a] > 0 then
-                local x = -self.N[i][_b] / self.N[i][_a]
-                if x > lb then
-                    lb = x
-                    li = i
-                end
-            end
-        end
-
-        if li == nil then
-            local ans = {}
-            for i, _ in pairs(self.B) do
-                ans[i] = self.B[i][_b]
-            end
-            for i, _ in pairs(self.N) do
-                ans[i] = 0
-            end
-            return obj, ans
-        end
-
-        local i_b, i_n
-        if self.N[li] then
-            local ub = INF
-            local ui = nil
-            for i, _ in pairs(self.B) do
-                if (self.B[i][li] or 0) < 0 then
-                    local x = -(self.B[i][_b] + lb * self.B[i][_a]) / self.B[i][li]
-                    if x < ub then
-                        ub = x
-                        ui = i
+    local best_equation_count = INF
+    local best_variable = nil
+    for y, _ in pairs(constraint) do
+        if y ~= _1 and y ~= _m then
+            local equation_count = 0
+            for x, _ in pairs(self) do
+                if x ~= _1 and x ~= _m then
+                    if self[x][y] ~= nil then
+                        equation_count = equation_count + 1
                     end
                 end
             end
-            if ui == nil then
-                -- TODO: problem ill-defined: is it unfeasible or unbounded?
-                return nil, {}
-            end
 
-            i_b = ui
-            i_n = li
+            if equation_count < best_equation_count then
+                best_equation_count = equation_count
+                best_variable = y
+            end
+        end
+    end
+
+    if best_variable == nil then
+        if constraint[_1] == 0 then
+            return true
         else
-            local ub = INF
-            local ui = nil
-            for i, _ in pairs(self.N) do
-                if (self.B[li][i] or 0) > 0 then
-                    local x = (self.N[i][_b] + lb * self.N[i][_a]) / self.B[li][i]
-                    if x < ub then
-                        ub = x
-                        ui = i
-                    end
-                end
-            end
-            if ui == nil then
-                -- TODO: problem ill-defined: is it unfeasible or unbounded?
-                return nil, {}
-            end
-
-            i_b = li
-            i_n = ui   
+            return false
         end
-
-        do
-            local eql = self.B[i_b]
-            local equ = self.N[i_n]
-            self.B[i_b] = nil
-            self.N[i_n] = nil
-
-            local k = -1 / eql[i_n]
-            for j, _ in pairs(eql) do
-                eql[j] = eql[j] * k
-            end
-            eql[i_n] = nil
-            eql[i_b] = -k
-
-            obj = obj + equ[_b] * eql[_b]
-            for i, _ in pairs(self.N) do
-                self.N[i][_a] = self.N[i][_a] + equ[_a] * (eql[i] or 0)
-                self.N[i][_b] = self.N[i][_b] + equ[_b] * (eql[i] or 0)
-            end
-
-            equ[_b] = -equ[_b] * k
-            equ[_a] = -equ[_a] * k
-
-            for i, _ in pairs(self.B) do
-                if self.B[i][i_n] then
-                    local k = self.B[i][i_n]
-                    for j, _ in pairs(eql) do
-                        self.B[i][j] = (self.B[i][j] or 0) + k * eql[j]
-                    end
-                    self.B[i][i_n] = nil
-                end
-            end
-
-            self.B[i_n] = eql
-            self.N[i_b] = equ
-        end
+    else
+        self[best_variable] = constraint:isolate(best_variable)
+        return true
     end
 end
 
-local solver = Simplex:new()
-local obj, ans = solver:solve()
-print(obj)
-print(dump(ans))
+-- TODO: these functions look like they share some commonality. How to
+--       refactor/rename/document them?
+
+function Simplex:search_rows_max(mu, y)
+    local lower_bound = -INF
+    local lower_bound_culprit = nil
+
+    for x, _ in pairs(self) do
+        if x ~= _1 and x ~= _m then
+            if (self[x][y] or 0) > 0 then
+                local critical_mu = -((self[x][_1] or 0) + mu * (self[x][_m] or 0)) / self[x][y]
+                if critical_mu > lower_bound then
+                    lower_bound = critical_mu
+                    lower_bound_culprit = x
+                end
+            end
+        end
+    end
+
+    return lower_bound_culprit, lower_bound
+end
+
+function Simplex:search_cols_max(mu, x)
+    local lower_bound = -INF
+    local lower_bound_culprit = nil
+
+    for y, _ in pairs(self[_1]) do
+        if y ~= _1 and y ~= _m then
+            if (self[x][y] or 0) > 0 then
+                local critical_mu = -(self[_1][y] or 0) / self[x][y]
+                if critical_mu > lower_bound then
+                    lower_bound = critical_mu
+                    lower_bound_culprit = y
+                end
+            end
+        end
+    end
+
+    return lower_bound_culprit, lower_bound
+end
+
+function Simplex:search_rows_min(mu, y)
+    local ub = INF
+    local ui = nil
+    for x, _ in pairs(self) do
+        if x ~= _1 and x ~= _m then
+            if (self[x][y] or 0) < 0 then
+                local xx = -((self[x][_1] or 0) + mu * (self[x][_m] or 0)) / self[x][y]
+                if xx < ub then
+                    ub = xx
+                    ui = x
+                end
+            end
+        end
+    end
+
+    return ui, ub
+end
+
+function Simplex:search_cols_min(mu, x)
+    local ub = INF
+    local ui = nil
+    for y, _ in pairs(self[_1]) do
+        if y ~= _1 and y ~= _m then
+            if (self[x][y] or 0) > 0 then
+                local xx = ((self[_1][y] or 0) + mu * (self[_m][y] or 0)) / self[x][y]
+                if xx < ub then
+                    ub = xx
+                    ui = y
+                end
+            end
+        end
+    end
+
+    return ui, ub
+end
+
+function Simplex:solve(objective)
+    local rng = Xoshiro128plus:new()
+
+    if objective ~= nil then
+        for x, _ in pairs(self) do
+            if x ~= _1 and x ~= _m then
+                objective = objective:replace(x, self[x])
+            end
+        end
+        self[_1] = objective
+    end
+
+    -- Tweak the coefficients for basic/non-basic variables with a positive,
+    -- log-normal coefficient times `µ`; the problem will always be primal-
+    -- and dual-feasible for sufficiently large `µ`.
+    self[_m] = AffineExpression:new{}
+
+    for x, _ in pairs(self[_1]) do
+        if x ~= _1 and x ~= _m then
+            self[_m][x] = math.exp(rng:next_normal_f())
+        end
+    end
+    for x, _ in pairs(self) do
+        if x ~= _1 and x ~= _m then
+            self[x][_m] = math.exp(rng:next_normal_f())
+        end
+    end
+
+    while true do
+        -- Find the `x` and `y` variables that prevent `µ` from being lowered; we
+        -- store their indexes as well as the corresponding `µ ≥ bound_*`. 
+        local pivot_x, bound_x = self:search_rows_max(0, _m)
+        local pivot_y, bound_y = self:search_cols_max(0, _m)
+
+        if bound_x <= 0 and bound_y <= 0 then
+            -- All variables meet primal and dual constraints with `µ = 0`: we're done!
+            local answer = {}
+            for x, _ in pairs(self) do
+                if x ~= _1 and x ~= _m then
+                    answer[x] = self[x][_1]
+                end
+            end
+            return self[_1][_1], answer
+        end
+
+        -- `µ = 0` would make the problem unfeasible; find the variable with the
+        -- tighest bound and search for the replacement pivot that still keeps
+        -- the problem feasible for the corresponding `bound_*` value.
+        if bound_x > bound_y then
+            pivot_y, _ = self:search_cols_min(bound_x, pivot_x)
+            if pivot_y == nil then
+                -- TODO: problem ill-defined: is it unfeasible or unbounded?
+                return nil, {}
+            end
+        else
+            pivot_x, _ = self:search_rows_min(bound_y, pivot_y)
+            if pivot_x == nil then
+                -- TODO: problem ill-defined: is it unfeasible or unbounded?
+                return nil, {}
+            end
+        end
+
+        -- Remove `pivot_x` from the objective function expression.
+        local pivot_equation = self[pivot_x]
+        self[pivot_x] = nil
+
+        -- Isolate `pivot_y` in the (former) expression for `pivot_x`.
+        -- (`pivot_x = pivot_equation` is equivalent to `pivot_equation - pivot_x = 0`.)
+        pivot_equation[pivot_x] = -1
+        pivot_equation = pivot_equation:isolate(pivot_y)
+
+        for x, _ in pairs(self) do
+            self[x] = self[x]:replace(pivot_y, pivot_equation)
+        end
+
+        self[pivot_y] = pivot_equation
+    end
+end
+
+return Simplex
