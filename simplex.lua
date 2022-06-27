@@ -145,9 +145,7 @@ function Simplex:search_cols_min(mu, x)
     return ui, ub
 end
 
-function Simplex:solve(objective)
-    local rng = Xoshiro128plus:new()
-
+function Simplex:set_objective(objective)
     if objective ~= nil then
         for x, _ in pairs(self) do
             if x ~= _1 and x ~= _m then
@@ -156,6 +154,11 @@ function Simplex:solve(objective)
         end
         self[_1] = objective
     end
+end
+
+-- TODO: give this a better name?
+function Simplex:start()
+    local rng = Xoshiro128plus:new()
 
     -- Tweak the coefficients for basic/non-basic variables with a positive,
     -- log-normal coefficient times `µ`; the problem will always be primal-
@@ -172,55 +175,67 @@ function Simplex:solve(objective)
             self[x][_m] = math.exp(rng:next_normal_f())
         end
     end
+end
 
-    while true do
-        -- Find the `x` and `y` variables that prevent `µ` from being lowered; we
-        -- store their indexes as well as the corresponding `µ ≥ bound_*`. 
-        local pivot_x, bound_x = self:search_rows_max(0, _m)
-        local pivot_y, bound_y = self:search_cols_max(0, _m)
+function Simplex:step()
+    -- Find the `x` and `y` variables that prevent `µ` from being lowered; we
+    -- store their indexes as well as the corresponding `µ ≥ bound_*`. 
+    local pivot_x, bound_x = self:search_rows_max(0, _m)
+    local pivot_y, bound_y = self:search_cols_max(0, _m)
 
-        if bound_x <= 0 and bound_y <= 0 then
-            -- All variables meet primal and dual constraints with `µ = 0`: we're done!
-            local answer = {}
-            for x, _ in pairs(self) do
-                if x ~= _1 and x ~= _m then
-                    answer[x] = self[x][_1]
-                end
-            end
-            return self[_1][_1], answer
-        end
-
-        -- `µ = 0` would make the problem unfeasible; find the variable with the
-        -- tighest bound and search for the replacement pivot that still keeps
-        -- the problem feasible for the corresponding `bound_*` value.
-        if bound_x > bound_y then
-            pivot_y, _ = self:search_cols_min(bound_x, pivot_x)
-            if pivot_y == nil then
-                -- TODO: problem ill-defined: is it unfeasible or unbounded?
-                return nil, {}
-            end
-        else
-            pivot_x, _ = self:search_rows_min(bound_y, pivot_y)
-            if pivot_x == nil then
-                -- TODO: problem ill-defined: is it unfeasible or unbounded?
-                return nil, {}
-            end
-        end
-
-        -- Remove `pivot_x` from the objective function expression.
-        local pivot_equation = self[pivot_x]
-        self[pivot_x] = nil
-
-        -- Isolate `pivot_y` in the (former) expression for `pivot_x`.
-        -- (`pivot_x = pivot_equation` is equivalent to `pivot_equation - pivot_x = 0`.)
-        pivot_equation[pivot_x] = -1
-        pivot_equation = pivot_equation:isolate(pivot_y)
-
+    if bound_x <= 0 and bound_y <= 0 then
+        -- All variables meet primal and dual constraints with `µ = 0`: we're done!
+        local answer = {}
         for x, _ in pairs(self) do
-            self[x] = self[x]:replace(pivot_y, pivot_equation)
+            if x ~= _1 and x ~= _m then
+                answer[x] = self[x][_1]
+            end
         end
+        return self[_1][_1] or 0, answer
+    end
 
-        self[pivot_y] = pivot_equation
+    -- `µ = 0` would make the problem unfeasible; find the variable with the
+    -- tighest bound and search for the replacement pivot that still keeps
+    -- the problem feasible for the corresponding `bound_*` value.
+    if bound_x > bound_y then
+        pivot_y, _ = self:search_cols_min(bound_x, pivot_x)
+        if pivot_y == nil then
+            -- TODO: problem ill-defined: is it unfeasible or unbounded?
+            return INF, nil
+        end
+    else
+        pivot_x, _ = self:search_rows_min(bound_y, pivot_y)
+        if pivot_x == nil then
+            -- TODO: problem ill-defined: is it unfeasible or unbounded?
+            return INF, nil
+        end
+    end
+
+    -- Remove `pivot_x` from the objective function expression.
+    local pivot_equation = self[pivot_x]
+    self[pivot_x] = nil
+
+    -- Isolate `pivot_y` in the (former) expression for `pivot_x`.
+    -- (`pivot_x = pivot_equation` is equivalent to `pivot_equation - pivot_x = 0`.)
+    pivot_equation[pivot_x] = -1
+    pivot_equation = pivot_equation:isolate(pivot_y)
+
+    for x, _ in pairs(self) do
+        self[x] = self[x]:replace(pivot_y, pivot_equation)
+    end
+
+    self[pivot_y] = pivot_equation
+
+    return nil, nil
+end
+
+function Simplex:solve()
+    self:start()
+    while true do
+        local obj, ans = self:step()
+        if ans ~= nil then
+            return obj, ans
+        end
     end
 end
 
